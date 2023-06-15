@@ -1,11 +1,34 @@
 import 'dart:developer';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(const MaterialApp(home: MyQR()));
+
+Future<void> getNewInsignia(BuildContext context, String? idChallenge) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? idUser = prefs.getString("idUser");
+  final String token = prefs.getString('token') ?? "";
+  String path =
+      'http://${dotenv.env['API_URL']}/user/challenges/addinsignia/$idUser/$idChallenge';
+  var response = await Dio().get(path,
+      options: Options(headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      }));
+  // if (response.statusCode == 200) {
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text("Nueva insignia desbloqueada")));
+  // } else {
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text("Error al obtener nueva insignia")));
+  // }
+}
 
 class MyQR extends StatelessWidget {
   const MyQR({Key? key}) : super(key: key);
@@ -100,8 +123,22 @@ class _QRViewExampleState extends State<QRViewExample> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   if (result != null)
-                    Text(
-                        'Barcode Type: ${describeEnum(result!.format)}   Data: ${result!.code}')
+                    FutureBuilder<void>(
+                      future: getNewInsignia(context, result!.code),
+                      builder:
+                          (BuildContext context, AsyncSnapshot<void> snapshot) {
+                        if (snapshot.connectionState == ConnectionState.done) {
+                          // La llamada a getNewInsignia ha finalizado
+                          return Container(); // Puedes retornar cualquier Widget aquí
+                        } else {
+                          // La llamada a getNewInsignia aún no ha finalizado
+                          return CircularProgressIndicator(); // Muestra un indicador de progreso o cualquier otro Widget mientras se espera
+                        }
+                      },
+                    )
+                  // getNewInsignia(context, result!.code)
+                  // Text(
+                  //     'Barcode Type: ${describeEnum(result!.format)}   Data: ${result!.code}')
                   else
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
